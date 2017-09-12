@@ -1,0 +1,224 @@
+\documentclass{article}
+\usepackage[top=.5in, bottom=.5in, left=.9in, right=.9in]{geometry}
+\usepackage[latin1]{inputenc}
+\usepackage{enumerate}
+\usepackage{hyperref}
+\usepackage{graphics}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{siunitx}
+\usepackage{mathtools}
+\usepackage{bbm}
+
+
+
+
+% Use instead of natbib
+\usepackage[backend=bibtex,citestyle=authoryear-comp,natbib=true,sorting=none,hyperref=true,maxnames=4,arxiv=pdf]{biblatex}
+\renewbibmacro{in:}{}
+\addbibresource{/Users/Evan/GitProjects/biomedical/references.bib}
+
+
+
+
+\newcommand{\obar}[1]{\ensuremath{\overline{ #1 }}}
+\newcommand{\iid}{\ensuremath{\stackrel{\textrm{iid}}{\sim}}}
+\newcommand{\op}[2]{{\ensuremath{\underset{ #2 }{\operatorname{ #1 }}~}}}
+\newcommand{\norm}[1]{{ \ensuremath{ \left\lVert  #1 \right\rVert  }  }}
+\newcommand{\cov}{ \ensuremath{ \textrm{cov} } }
+\newcommand{\var}{ \ensuremath{ \textrm{var} } }
+\newcommand{\tr}{ \ensuremath{ \textrm{trace} } }
+\newcommand{\df}{ \ensuremath{ \textrm{df} } }
+\newcommand{\R}{ \ensuremath{ \mathbb{R} }}
+\newcommand{\indicator}[1]{ \ensuremath{ \mathbbm{1}\left\{ #1 \right\} }   }
+
+\usepackage{xcolor}
+\definecolor{darkgreen}{rgb}{0,0.25,0}
+\newcommand{\soln}{{\color{red}\textbf{Solution:~}\color{black}}}
+
+
+\usepackage[formats]{listings}
+\lstdefineformat{R}{~={\( \sim \)}}
+\lstset{% general command to set parameter(s)
+basicstyle=\small\ttfamily, % print whole listing small
+keywordstyle=\bfseries\rmfamily,
+keepspaces=true,
+% underlined bold black keywords
+commentstyle=\color{darkgreen}, % white comments
+stringstyle=\ttfamily, % typewriter type for strings
+showstringspaces=false,
+numbers=left, numberstyle=\tiny, stepnumber=1, numbersep=5pt, %
+frame=shadowbox,
+rulesepcolor=\color{black},
+,columns=fullflexible,format=R
+} %
+\renewcommand{\ttdefault}{cmtt}
+% enumerate is numbered \begin{enumerate}[(I)] is cap roman in parens
+% itemize is bulleted \begin{itemize}
+% subfigures:
+% \begin{subfigure}[b]{0.5\textwidth} \includegraphics{asdf.jpg} \caption{} \label{subfig:asdf} \end{subfigure}
+\hypersetup{colorlinks=true, urlcolor=blue, linkcolor=blue, citecolor=blue}
+
+
+\graphicspath{ {C:/Users/Evan/Desktop/} }
+\title{\vspace{-6ex}NN/VI/Autoencoder Reading Group Notes\vspace{-2ex}} lorem
+\author{Evan Ott \\ \href{mailto:evan.ott@utexas.edu}{evan.ott@utexas.edu}\vspace{-2ex}}
+\date{Last updated: \today}
+\setcounter{secnumdepth}{0}
+
+\usepackage[parfill]{parskip}
+
+\newcommand{\mycite}[1]{\item[\cite{#1}] ~\\ \fullcite{#1} \\ ~ \\}
+
+\begin{document}
+\maketitle
+
+\section{Outline}
+\begin{itemize}
+  \item Variational inference (James)
+  \item Stochastic variational inference (Michael)
+  \item NN and backpropagation (Yuguang)
+  \item Introduction to TensorFlow (Mo and Evan) -- actual hello world (like a single layer perceptron or a linear model) -- leave out complicated things like dropout, etc.
+  \item Classical autoencoders (Mauricio)
+  \item Variational autoencoders (Jennifer)
+\end{itemize}
+
+We'll have a GitHub page / Google Doc for papers, examples, talks, code, etc.
+
+\section{2017-09-11: Variational Inference (James)}
+\subsection{``Variational Bayes for Idiots''}
+Today is a basic introduction to variational inference.
+
+Observed data $X$ and hidden variables $Z$ (could be parameters for the whole dataset
+-- like means and variances of mixture components of a GMM -- or the per-data-point hidden variable -- like an indicator
+for each datapoint being in a cluster).
+
+\begin{align*}
+  p(x,z)&= p(x|z)\cdot p(z)
+  \\
+  \textrm{Bayes:~} p(z|x)&=\frac{p(x|z)p(z)}{p(x)}
+  \\
+  \textrm{\color{red}Problem:~\color{black}} p(x)=\int_Z p(x,z)dz
+\end{align*}
+$p(x)$ is challenging or impossible to compute.
+
+Idea:
+\begin{itemize}
+  \item posit some family of approximations, $\mathcal{Q}$
+  \item Find the member of $\mathcal{Q}$ that is ``closest'' to $p(z|x)$ in KL-divergence (or other measure)
+
+  \hspace{5ex} Formally:
+  \begin{equation}
+    q^*(z)=\arg\min_{q(z)\in\mathcal{Q}}KL \left(q(z) \middle\| p(z|x)\right)
+  \end{equation}
+  where
+  \begin{align*}
+    \label{eq:KL}
+    KL \left(q(z) \middle\| p(z|x)\right) &= \mathbb{E}_q(z)\left[\log\frac{q(z)}{p(z|x)}\right]
+    \\
+    &= \mathbb{E}_q\left[\log q(z)\right] - \mathbb{E}_q\left[\log p(z|x)\right]
+  \end{align*}
+\end{itemize}
+
+This is a calculus of variations problem (like the brachistochrome problem), where this will eventually
+lead to a vector optimization problem that's standing for a functional optimization problem.
+
+This also will give us point estimates that are often better than running a Gibbs sampler, and be faster.
+KL will favor putting probability mass where $p(z|x)$ is large, so that the variance of the approximated
+distribution is often smaller than the variance of the true posterior. If we flipped the ratio in equation
+\ref{eq:KL}, we would instead be looking at Expectation Propagation.
+
+\subsubsection{Example: One-Hot Encoding}
+\begin{align*}
+  (x_i|\mu, c_i) &\sim N(c_i^\top \mu, 1)
+  \\
+  \textrm{e.g.,~}c_i &= (0, 0, 1, 0, 0) \in \{0,1\}^k
+  \\
+  \mu\in\mathbb{R}^k
+  \\
+  \mu_k&\sim N(0,\tau^2)
+\end{align*}
+Joint of data, parameters:
+\begin{equation*}
+  p(\mu,c,x)=p(\mu)\prod_{i=1}^N p(c_i)p(x_i|\mu,c_i)
+\end{equation*}
+Marginal or ``Evidence'': $p(x)=\int_{\mu,c}p(x,\mu,c)p(\mu,c)d\mu dc$
+
+\subsubsection{ELBO}
+ELBO: Evidence lower bound.
+
+$\mathcal{Q}$: family of approximations.
+
+Each $q(z)\in\mathcal{Q}$ is a candidate.
+
+$\arg\min_{q(z)\in\mathcal{Q}}KL \left(q(z) \middle\| p(z|x)\right)$ is not computable:
+
+\begin{align*}
+  \mathbb{E}_q\left[\log q(z)\right] - \mathbb{E}_q\left[\log p(z|x)\right] &= \mathbb{E}_q\left[\log q(z)\right] - \mathbb{E}_q\left[\log p(x,z) - \log p(x)\right]
+\end{align*}
+But we can't compute $p(x)$, so we can't compute it, but the term is not dependent on the choice of $z$. So, we ignore that term,
+and want to maximize its negative (the ELBO):
+\begin{align*}
+  ELBO(q)&=\mathbb{E}_q\left[\log p(x,z)\right]-\mathbb{E}_q\left[\log q(z)\right]
+  \\
+  &=-KL \left(q(z) \middle\| p(z|x)\right) + \log(p(x))
+  \\
+  &\leq \log(p(x))
+\end{align*}
+So we can re-write this as:
+\begin{align*}
+  ELBO(q)&=\mathbb{E}_q\left[\log p(x|z)\right]+\mathbb{E}_q\left[\log p(z)\right]-\mathbb{E}_q\left[\log q(z)\right]
+  \\
+  &=\mathbb{E}_q\left[\log p(x|z)\right]+KL\left(q(z)\middle\|p(z)\right)
+\end{align*}
+So we're making the likelihood as large as possible, and making the
+approximate distribution that penalizes moving away from the prior. In other words,
+be close to the data, and don't stray far from the prior.
+
+\subsection{Note}
+Carlos asked a question about not having to do the expectation of the log posterior with respect to $q$ to get
+something more like a MAP estimate. But a reasonable compromise is doing a maximum marginal a posteriori estimate
+where we marginalize over the local variables in the model (the cluster assignments in a GLM), but keep the global
+parameters to find the MAP. That's a nice sort of Bayesian thing to do.
+
+\subsection{Mean-field family}
+This is a family of approximations where the correlation structure is completely independent.
+
+\begin{equation*}
+  \mathcal{Q}=\left\{q(z) : q(z)=\prod_{j=1}^M q_j(z_j)\right\}
+\end{equation*}
+This is not a model of the data (there's no $x$ in that). But we're going to connect it to the data
+through the ELBO. Now, we have options for each $q_j$, where we might take a nice parametric form. We might have Gaussians for location parameters
+or inverse gammas for scale parameters. But for some models where the complete conditionals are exponential, we can find optimal approximation to take for each $q_j$.
+
+\subsection{Coordinate ascent}
+Not totally different from Gibbs sampling, only we're doing optimization instead of probabilistic draws. We'll do
+one latent variable at a time, such as all the components one after another, then each mean in a GMM. Then, start over.
+
+Consider the $j$th latent variable $z_j$ with complete conditional $p(z_j|z_{-j}, x)$. With $z_{-j}$ fixed,
+the optimal $q_j$ (that makes ELBO as large as possible) is of the form:
+
+\begin{equation}
+  q_j^*(z_j)\propto \exp\left\{ \mathbb{E}_{-j}\left[ \log p(z_j | z_{-j}, x)\right] \right\}
+\end{equation}
+Or, can write in terms of the joint (the constants will go away). The expectation is with
+respect to the variational density over all the other parameters, i.e.,
+\begin{equation*}
+  z_{-j}\sim \prod_{l\neq j} q_l(z_l)
+\end{equation*}
+
+So, we set $q_j^*(z_j)$ for each $j$, cycle through, update, etc. until it converges.
+% \begin{description}
+% \mycite{}
+% \end{description}
+
+
+
+% If using biblatex
+% \printbibliography
+
+\end{document}
