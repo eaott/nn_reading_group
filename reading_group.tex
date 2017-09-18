@@ -33,6 +33,8 @@
 \newcommand{\var}{ \ensuremath{ \textrm{var} } }
 \newcommand{\tr}{ \ensuremath{ \textrm{trace} } }
 \newcommand{\df}{ \ensuremath{ \textrm{df} } }
+\newcommand{\E}{ \ensuremath{ \mathbb{E} }}
+\newcommand{\V}{ \ensuremath{ \mathbb{V} }}
 \newcommand{\R}{ \ensuremath{ \mathbb{R} }}
 \newcommand{\indicator}[1]{ \ensuremath{ \mathbbm{1}\left\{ #1 \right\} }   }
 
@@ -65,7 +67,7 @@ rulesepcolor=\color{black},
 
 
 \graphicspath{ {C:/Users/Evan/Desktop/} }
-\title{\vspace{-6ex}NN/VI/Autoencoder Reading Group Notes\vspace{-2ex}} lorem
+\title{\vspace{-6ex}NN/VI/Autoencoder Reading Group Notes\vspace{-2ex}}
 \author{Evan Ott \\ \href{mailto:evan.ott@utexas.edu}{evan.ott@utexas.edu}\vspace{-2ex}}
 \date{Last updated: \today}
 \setcounter{secnumdepth}{0}
@@ -88,6 +90,8 @@ rulesepcolor=\color{black},
 \end{itemize}
 
 We'll have a GitHub page / Google Doc for papers, examples, talks, code, etc.
+
+That's at \url{https://github.com/jestarling/DeepProbModels}
 
 \section{2017-09-11: Variational Inference (James)}
 \subsection{``Variational Bayes for Idiots''}
@@ -116,12 +120,12 @@ Idea:
     q^*(z)=\arg\min_{q(z)\in\mathcal{Q}}KL \left(q(z) \middle\| p(z|x)\right)
   \end{equation}
   where
-  \begin{align*}
+  \begin{align}
     \label{eq:KL}
-    KL \left(q(z) \middle\| p(z|x)\right) &= \mathbb{E}_q(z)\left[\log\frac{q(z)}{p(z|x)}\right]
+    KL \left(q(z) \middle\| p(z|x)\right) &= \E_q(z)\left[\log\frac{q(z)}{p(z|x)}\right]
     \\
-    &= \mathbb{E}_q\left[\log q(z)\right] - \mathbb{E}_q\left[\log p(z|x)\right]
-  \end{align*}
+    &= \E_q\left[\log q(z)\right] - \E_q\left[\log p(z|x)\right] \notag
+  \end{align}
 \end{itemize}
 
 This is a calculus of variations problem (like the brachistochrome problem), where this will eventually
@@ -158,12 +162,12 @@ Each $q(z)\in\mathcal{Q}$ is a candidate.
 $\arg\min_{q(z)\in\mathcal{Q}}KL \left(q(z) \middle\| p(z|x)\right)$ is not computable:
 
 \begin{align*}
-  \mathbb{E}_q\left[\log q(z)\right] - \mathbb{E}_q\left[\log p(z|x)\right] &= \mathbb{E}_q\left[\log q(z)\right] - \mathbb{E}_q\left[\log p(x,z) - \log p(x)\right]
+  \E_q\left[\log q(z)\right] - \E_q\left[\log p(z|x)\right] &= \E_q\left[\log q(z)\right] - \E_q\left[\log p(x,z) - \log p(x)\right]
 \end{align*}
 But we can't compute $p(x)$, so we can't compute it, but the term is not dependent on the choice of $z$. So, we ignore that term,
 and want to maximize its negative (the ELBO):
 \begin{align*}
-  ELBO(q)&=\mathbb{E}_q\left[\log p(x,z)\right]-\mathbb{E}_q\left[\log q(z)\right]
+  ELBO(q)&=\E_q\left[\log p(x,z)\right]-\E_q\left[\log q(z)\right]
   \\
   &=-KL \left(q(z) \middle\| p(z|x)\right) + \log(p(x))
   \\
@@ -171,9 +175,9 @@ and want to maximize its negative (the ELBO):
 \end{align*}
 So we can re-write this as:
 \begin{align*}
-  ELBO(q)&=\mathbb{E}_q\left[\log p(x|z)\right]+\mathbb{E}_q\left[\log p(z)\right]-\mathbb{E}_q\left[\log q(z)\right]
+  ELBO(q)&=\E_q\left[\log p(x|z)\right]+\E_q\left[\log p(z)\right]-\E_q\left[\log q(z)\right]
   \\
-  &=\mathbb{E}_q\left[\log p(x|z)\right]+KL\left(q(z)\middle\|p(z)\right)
+  &=\E_q\left[\log p(x|z)\right]-KL\left(q(z)\middle\|p(z)\right)
 \end{align*}
 So we're making the likelihood as large as possible, and making the
 approximate distribution that penalizes moving away from the prior. In other words,
@@ -203,7 +207,7 @@ Consider the $j$th latent variable $z_j$ with complete conditional $p(z_j|z_{-j}
 the optimal $q_j$ (that makes ELBO as large as possible) is of the form:
 
 \begin{equation}
-  q_j^*(z_j)\propto \exp\left\{ \mathbb{E}_{-j}\left[ \log p(z_j | z_{-j}, x)\right] \right\}
+  q_j^*(z_j)\propto \exp\left\{ \E_{-j}\left[ \log p(z_j | z_{-j}, x)\right] \right\}
 \end{equation}
 Or, can write in terms of the joint (the constants will go away). The expectation is with
 respect to the variational density over all the other parameters, i.e.,
@@ -212,6 +216,101 @@ respect to the variational density over all the other parameters, i.e.,
 \end{equation*}
 
 So, we set $q_j^*(z_j)$ for each $j$, cycle through, update, etc. until it converges.
+
+\section{2017-09-18: Variational Inference (James)}
+
+\subsection{CAVI}
+Pick up from last time on Coordinate Ascent Variational Inference (CAVI).
+
+Consider $z_j$. Complete conditional is $p(z_j | z_{-j}, x)$. Fact: with $z_{-j}$ fixed, the optimal $q_j(z_j)$
+is of the form
+\begin{equation*}
+  \log q_j^*(z_j) =\E_{-j} \log(p(z_j | z_{-j, x}))
+\end{equation*}
+where $\E_{-j}$ refers to taking the expectation over $q_{-j}(z_{-j})=\prod_{l\neq j} q_l(z_l)$.
+
+So to do CAVI, cycle through $j=1,\ldots, m$, each time updating $q_j(z_j)=q_j^*(z_j)$ until no improvements are made
+to the ELBO.
+
+\subsubsection{Proof of $q_j^*$}
+\begin{align*}
+  ELBO(q)=\E_q[\log p(x,z)]-\E_q[\log q(z)]
+\end{align*}
+We want to isolate $q_j(z_j)$:
+\begin{align*}
+  ELBO(q_j)&=\E_{q_j} \left[ \E_{q_{-j}} \left[ \log p(x, z_j, z_{-j}) \right]\right] -
+  \E_{q_j}\left[ \log q_j(z_j) \right] + \textrm{ constant}
+  \\
+  &=\E_{q_j}\left[ \log q_j^*(z_j) \right] - \E_{q_j}\left[ \log q_j(z_j) \right]
+  \\
+  &=-KL \left( q_j \| q_j^* \right) - \E_{q_j}\left[ \log q_j(z_j) \right]
+\end{align*}
+Which guarantees that $q_j^*$ is optimal, because we are minimizing the KL divergence between $q_j$ and $q_j^*$.
+
+\subsection{GMM}
+\begin{align*}
+  x_i&\in\R~~~~i=1,\ldots,N
+  \\
+  \mu_k:&k^{\textrm{th}}\textrm{ mean}~~~~k=1,\ldots,L
+  \\
+  c_i:& \textrm{ indicator vector (``one hot encoding'')}
+  \\
+  x_i | \mu &\sim N(c_i^\top \mu, 1)
+  \\
+  \mu_k &\sim N(0, \tau^2)
+\end{align*}
+
+For now, set $\tau$ as fixed, to focus on inference for $\mu$ and $c$.
+
+Mean-field family:
+\begin{align*}
+  q(z)&=\prod_{j}q_j(z_j)
+  \\
+  &=\prod_{l=1}^L q_k(\mu_k) \cdot \prod_{i=1}^N q_i(c_i)
+  \\
+  &=\prod_{l=1}^L N(\mu_k| m_k, s_k^2) \cdot \prod_{i=1}^N \textrm{Multinomial}(c_i | \phi_i)
+\end{align*}
+
+Now, go through the ELBO, not really different from having to derive a Gibbs sampler.
+
+\begin{align*}
+  ELBO(q) &=
+    \E_q \left[ \log \left( \prod_{i=1}^N N(x_i|c_i^\top \mu, 1) \cdot p(\mu, c) \right) \right]
+    - \E_q \left[ \log \left( \prod_{l=1}^L q(\mu_k| m_k, s_k^2) \right) + \log \left( \prod_{i=1}^N q(c_i | \phi_i) \right)\right]
+  \\
+  &= \sum_{k=1}^L \E_q \left[ \log p(\mu_k) ; m_k, s_k^2 \right]
+  + \sum_{i=1}^N \E_q \left[ \log p(c_i) ; \phi_i \right]
+  + \sum_{i=1}^N \E_q \left[ \log p(x_i | c_i, \mu) ; \phi_i, m, s^2 \right]
+  - \sum_{i=1}^N \E_q \left[ \log q_i(c_i; \phi_i) \right]
+  - \sum_{k=1}^L \E_q \left[ \log q_k(\mu_k; m_k, s_k^2) \right]
+\end{align*}
+
+So the update for $c_i$ is
+\begin{align*}
+  q^*(c_i) &= \log p(c_i) + \E_{-c_i} \left[ \log p(x_i | c_i, \mu) ; m, s^2 \right]
+  \\
+  \log p(c_i) &= \log \left( \frac{1}{K} \right) = \textrm{ constant in } c_i
+  \\
+  \E \left[ \log p(x_i | c_i, \mu) ; m, s^2 \right] &= \E \left[ -\frac12 \sum_{k=1}^L c_{ik}(x_i-\mu_k)^2 ; m, s^2 \right]
+  \\
+  &= \E \left[ -\frac12 \sum_{k=1}^L c_{ik}(x_i^2-2x_i\mu_k+\mu_k^2) ; m, s^2 \right]
+  \\
+  &= \sum_{k=1}^L \left[  \E \left( -\frac12  c_{ik} x_i^2 \right) + \E \left( c_{ik}\mu_k \right)x_i - \frac12 \E(c_{ik}\mu_k^2) \right]
+  \\
+  &= \textrm{const} + \sum_{k=1}^L \left[ c_{ik} x_i \E[\mu_k] - \frac12 c_{ik} \E[\mu_k^2] \right]
+  \\
+  &= \sum_{k=1}^L c_{ik} \left[ x_i \E[\mu_k] - \frac12 \E[\mu_k^2] \right]
+  \\
+  \E[\mu_k] &= m_k
+  \\
+  \E[\mu_k^2] &= s_k^2 + m_k^2
+  \\
+  q^*(c_i| \phi_i) &\propto \prod_{k=1}^L (e^{\psi_{ik}})^{c_{ik}}
+  \\
+  \psi_{ik} &= x_i m_k - \frac12 (s_k^2 + m_k^2)
+\end{align*}
+
+In the GitHub repo, see the Variational Inference section.
 % \begin{description}
 % \mycite{}
 % \end{description}
