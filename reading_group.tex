@@ -309,14 +309,83 @@ So the update for $c_i$ is
   \\
   \psi_{ik} &= x_i m_k - \frac12 (s_k^2 + m_k^2)
 \end{align*}
+\emph{The above was not edited and may contain errors or omissions.}
 
 In the GitHub repo, see the Variational Inference section.
-% \begin{description}
-% \mycite{}
-% \end{description}
 
+\section{2017-09-25: Stochastic Variational Inference (Michael)}
+Basic idea: instead of using the full dataset, use samples.
+In general, the posterior is hard. Want to minimize KL divergence, or
+maximize ELBO.
 
+Today, working with GMM again. Make the mean-field approximation, and have it factor
+nicely. Then, get exponential family:
+\begin{equation*}
+  P(X|\theta)=h(X)\exp \left[ \sum_i \eta_i(\theta) T_i(X)-A(\theta) \right]
+\end{equation*}
+Where $\eta(\theta)$ is the ``natural parameter.'' If complete conditional and variational
+approximation forms are both in the same exponential family, everything is easy. Below, $\lambda$ will be variational
+for $\beta$ and $\phi_n$ will be variational for $z$, the indicators.
 
+Typically:
+\begin{equation*}
+  \lambda^{(t)}=\lambda^{(t-1)}+\rho\nabla f(\lambda)
+\end{equation*}
+
+But instead, move with the ``natural gradient'' (rather than the gradient as-is). A motivating example is looking at
+pairs of normal distributions: $N(0, 10000)$ and $N(10, 10000)$ are obviously close together, whereas $N(0, 0.1)$ and $N(10, 0.1)$
+are obviously far apart. The natural gradient moves in directions that are roughly constant length in ``information space''
+rather than Euclidean space. It's not altogether different from comparing the gradient and the Newton direction.
+
+The natural gradient is the inverse Fisher information matrix times the standard gradient (notation from \url{http://andymiller.github.io/2016/10/02/natural_gradient_bbvi.html}):
+\begin{align*}
+  F_\lambda &= \mathbb{E}_{q(\cdot; \lambda)} \left[ \nabla_\lambda \ln q(x; \lambda) \left( \nabla_\lambda \ln q(x; \lambda) \right)^\intercal \right]
+  \\
+  \tilde \nabla_\lambda &= F_\lambda^{-1} \nabla_\lambda \mathcal{L}(\lambda)
+\end{align*}
+
+Gradient: Pick a coordinate direction
+and maximize the difference between where you are and where you're going with a particular Euclidean step size.
+
+Natural gradient: do the same thing, but with a particular KL-divergence step size.
+
+However, the natural gradient for exponential family is much easier:
+\begin{align*}
+  \hat{\nabla} f(\lambda) &= \E_Q \left[ \eta(\cdot) \right] - \lambda
+  \\
+  \lambda^{(t)}&=(1-\rho)\lambda^{(t-1)}+\rho \E_Q \left[ \eta(\cdot) \right]
+\end{align*}
+
+So in practice, we could run on individual data points, but instead minibatches work well. They're unbiased, but
+a subsample:
+\begin{enumerate}
+  \item Select size $M$ minibatch of data
+  \item For $n=1\cdots M$ set $\phi_n=\E_{Q(\lambda)}\left[ \eta(\cdot) \right]$
+  \item For $n=1\cdots M$ $\hat{\lambda}_n=\E_{Q(\phi)}\left[ \eta(\cdot) \right]$ with estimate of gradient which is the
+  best guess for the parameter based on a single example.
+  \item Update $\lambda^{(t)}=(1-\rho_t)\lambda^{(t-1)}+\frac{\rho_t}{M}\sum_{n=1}^M \hat{\lambda}_n$
+\end{enumerate}
+
+\begin{align*}
+  x_n\sim N(z_n^\top\mu, \sigma^2)
+  \\
+  \mu\sim N(\mu_0)
+  \\
+  z_n\sim \textrm{Multinomial}
+\end{align*}
+
+So the variational approximation gives $z$ as a Multinomial and $\mu$ as a Normal, both of which are in the exponential
+family.
+
+For additional reference (because I could barely keep up):
+\begin{description}
+  \mycite{miller2016natural}
+  \mycite{hoffman2013stochastic}
+  ``This is one of the most important papers in Bayesian inference in the last 10 years'' --James.
+\end{description}
+
+Advice: do the algebra once for the GMM update, taking for granted the definition of the natural gradient for
+exponential families as something to do once.
 % If using biblatex
 % \printbibliography
 
