@@ -386,6 +386,56 @@ For additional reference (because I could barely keep up):
 
 Advice: do the algebra once for the GMM update, taking for granted the definition of the natural gradient for
 exponential families as something to do once.
+
+\section{2017-10-02: Neural Networks and Backpropagation (Yuguang)}
+\subsection{Introduction}
+Proposed in 1943, based on rough outline of how the brain works.
+
+\subsection{Notation}
+\begin{itemize}
+  \item $L$ total layers
+  \item $S_l$ number of perceptrons in $l$th layer
+  \item $w^l_{ji}$ weight from i in layer (l-1) to j in l
+  \item $z^l_i$ input of perceptron i in $l$th layer (including bias)
+  \item $\sigma$ activation function
+  \item $a^l_i$ activation of perceptron i in $l$th layer
+  \item $b^l_i$ bias of ---
+  \item $C$ cost function: $C=\frac{1}{n}\sum_xC_x$ and $C=\frac12\norm{y-a^L}^2$
+  \item $\odot$ Hadamard product
+\end{itemize}
+
+\subsection{Forward step}
+Initialize weights with random values, this lets us pass forward, then later update
+\begin{equation*}
+  w_{ji}^{l'}=w_{ji}^l - \alpha \frac{\partial C}{\partial{w_{ji}^l}}
+\end{equation*}
+and similar for bias terms.
+
+Define $\delta_i^l=\frac{\partial C}{\partial Z_i^l}$ where $Z_i^l=\sum_k w_{ik}^l a^{l-1}_k+b_i^l$
+and $\delta^L=\nabla_a C\odot \sigma'(Z^L)$ and for $l<L$, $\delta^l=\left( \left[ W^{L+1} \right]^\top \delta^{l+1} \right) \odot \sigma'(z^l)$
+
+Then $\frac{\partial C}{\partial b_i^L} = \delta_i^L$ and $\frac{\partial C}{\partial w_{ji}^L} = a_i^{l-1}\delta_j^L$
+
+\subsection{Backward step}
+Do gradient update for last layer, then work backwards. Use a fancy application of the chain rule, using
+calculations we made on the forward step:
+
+\begin{align*}
+  \delta_i^L&=\frac{\partial C}{\partial Z_i^L}=\sum_k \frac{\partial C}{\partial a_k^L} \frac{\partial a_k^L}{\partial z_i^L}
+  \\
+  a^L&=\sigma(z^L)=\sigma(W^L a^{L-1} + b^L)
+\end{align*}
+So that only $a_i^L$ has a term with $z_i^L$.
+So we can simplify:
+\begin{align*}
+  \delta_i^L&=\frac{\partial C}{\partial Z_i^L}=\frac{\partial C}{\partial a_i^L} \frac{\partial a_i^L}{\partial z_i^L}
+  \\
+  &= \frac{\partial C}{\partial a_i^L} \sigma'(Z_i^L)
+\end{align*}
+
+Do a similar chain rule for the hidden layers, bias terms. Eventually arrive at something that is just a function of
+things we computed on the forward pass.
+
 % If using biblatex
 % \printbibliography
 
