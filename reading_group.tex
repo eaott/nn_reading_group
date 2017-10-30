@@ -436,6 +436,52 @@ So we can simplify:
 Do a similar chain rule for the hidden layers, bias terms. Eventually arrive at something that is just a function of
 things we computed on the forward pass.
 
+\section{2017-10-23: Classical autoencoders (Mauricio)}
+Mostly today, code on GitHub group.
+
+\subsection{Motivation}
+Data compression, denoising, hashing, feature extraction, transfer learning.
+
+\subsection{Description}
+Input and output are the same, just with a bottleneck layer (or set of layers). First part is encoder, second is
+decoder.
+
+Similar in ideology to PCA, trying to find some ``hyperplane'' that explains data simply. PCA maximizes
+the variance of a linear combination of principal components. Solution comes from eigenvectors from estimated
+covariance matrix of $X$.
+
+Instead, can show that PCA (where $W$ has the eigenvectors) satisfies the reconstruction error problem:
+\begin{equation*}
+  \min_W\E \left( (WW^\top X_i - X_i)^2 \right)\Rightarrow\min_W \frac{1}{N} \sum_{i=1}^N\norm{WW'x_i-x_i}^2
+\end{equation*}
+
+It's like having a single hidden layer where $W_1=W$ and $W_2=W'$, with no activation function (technically, identity).
+
+Could do approximate PCA this way, but not necessarily orthogonal, only reasonable to use SGD on large data, but there
+are different PCA algorithms that would be efficient.
+
+Instead, we allow any activation, any size of network, etc. Just have a bottleneck in the middle (that also gets a bias).
+
+Idea from neuroscience (visual system): neurons fire for a specific pattern.
+
+
+\section{2017-10-30: Variational Autoencoders (Jennifer)}
+
+Data $x$, latent $z$, approximate $p(z|x)$ where $p(x)=\int p(x|z)p(z)dz$ is intractible.
+
+Reminder, minimizing KL divergence is intractable, but maximizing ELBO will minimize it indirectly and tractably.
+
+Going to use encoder $q_\phi(z|x)$, latent $z\sim N(\mu, \sigma I)$, decoder $p_\theta(x|z)$.
+
+Use the reparameterization trick is $z=\mu+\sigma \odot \epsilon$ where $\epsilon\sim N(0,I)$. This lets you do
+backpropagation on $\mu$ and $\sigma$. Just do that draw once per training epoch / training. They are the output of the first
+neural network (the encoder) such that $(\mu, \sigma)=f(x|\phi)$. At the end, $\tilde{x}=f(z;\theta)$ with $\theta$ as the
+output parameters. Can always put a Bernoulli or Normal as the likelihood instead.
+
+Going to use the -ELBO as the loss function we're optimizing to find $\phi$ and $\theta$ (the variational parameters), while
+noting the Bayesian (model) parameter $z$.
+
+
 % If using biblatex
 % \printbibliography
 
