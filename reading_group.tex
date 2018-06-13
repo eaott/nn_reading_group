@@ -481,7 +481,24 @@ output parameters. Can always put a Bernoulli or Normal as the likelihood instea
 Going to use the -ELBO as the loss function we're optimizing to find $\phi$ and $\theta$ (the variational parameters), while
 noting the Bayesian (model) parameter $z$.
 
+\section{2017-11-13: Convolutional Neural Networks (Carlos)}
+0-padding to be able to maintain dimensions.
 
+Convolutional layer is just MLP with:
+\begin{itemize}
+  \item sparse interactions (rather than fully-connected layers)
+  \item parameter sharing
+  \item equivariant representations (patch that's translated yields same result)
+\end{itemize}
+
+3 stages of a convolutional layer:
+\begin{enumerate}
+  \item Convolutional stage
+  \item ``Detection'' stage (apply sigmoid, ReLU, etc.)
+  \item Pooling stage (max, avg, L2-norm)
+\end{enumerate}
+
+Pooling as a means of robustness -- can change a pixel (or kernel) slightly and get basically the same result.
 % If using biblatex
 % \printbibliography
 
